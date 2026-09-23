@@ -10,7 +10,7 @@ public sealed class ChatRequest
     /// <summary>Проверяет запрос по ограничениям из настроек; возвращает ошибку или null.</summary>
     public ApiError? Validate(OpenRouterOptions options)
     {
-        if (Messages.Count == 0)
+        if (Messages is null || Messages.Count == 0)
             return new ApiError("validation", "Передайте хотя бы одно сообщение.");
 
         if (Messages.Count > options.MaxMessages)
