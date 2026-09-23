@@ -621,3 +621,27 @@ html, body {
   font-family: var(--font-mono); font-size: 0.67rem;
   color: rgba(138,132,156,0.42); letter-spacing: 0.04em;
 }
+
+/* ── Responsive ─────────────────────────────────────────────────────── */
+
+@supports (height: 100dvh) {
+  html, body { height: 100dvh; }
+  #root, .app-shell { height: 100dvh; }
+}
+
+@media (max-width: 767px) {
+  .app-header { padding: 0 12px; }
+  .logo-text { display: none; }
+  .header-controls { gap: 10px; }
+  .model-select { min-width: 0; max-width: 40vw; }
+  .btn-new-chat { padding: 7px 10px; }
+  .bubble-wrap { max-width: 82%; }
+  .msg-list { padding: 16px 12px 24px; }
+  .input-bar { padding: 12px 12px 10px; }
+  .msg-md table { display: block; overflow-x: auto; }
+}
+
+@media (max-width: 480px) {
+  .header-controls { gap: 8px; }
+  .btn-new-chat-text { display: none; }
+}
