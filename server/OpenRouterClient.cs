@@ -28,7 +28,7 @@ public sealed class OpenRouterClient
     public async Task<ChatResponse> CompleteAsync(string model, IReadOnlyList<ChatMessage> messages, CancellationToken ct)
     {
         using var request = CreateRequest(model, messages, stream: false);
-        using var response = await _http.SendAsync(request, HttpCompletionOption.ResponseContentRead, ct);
+        using var response = await SendAsync(request, HttpCompletionOption.ResponseContentRead, ct);
 
         if (!response.IsSuccessStatusCode)
             throw await CreateUpstreamErrorAsync(response, ct);
@@ -49,7 +49,7 @@ public sealed class OpenRouterClient
     public async Task StreamAsync(string model, IReadOnlyList<ChatMessage> messages, HttpResponse response, CancellationToken ct)
     {
         using var request = CreateRequest(model, messages, stream: true);
-        using var upstream = await _http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct);
+        using var upstream = await SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct);
 
         if (!upstream.IsSuccessStatusCode)
             throw await CreateUpstreamErrorAsync(upstream, ct);
@@ -84,6 +84,18 @@ public sealed class OpenRouterClient
         }
 
         await Sse.WriteDoneAsync(response, responseModel ?? model, usage, ct);
+    }
+
+    private async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, HttpCompletionOption completionOption, CancellationToken ct)
+    {
+        try
+        {
+            return await _http.SendAsync(request, completionOption, ct);
+        }
+        catch (HttpRequestException)
+        {
+            throw new OpenRouterException("network", "Не удалось связаться с OpenRouter: проверьте сеть и настройки сервера.");
+        }
     }
 
     private HttpRequestMessage CreateRequest(string model, IReadOnlyList<ChatMessage> messages, bool stream)
