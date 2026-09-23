@@ -469,12 +469,12 @@ export default function App() {
       const ok = await apiHealth()
       setServerStatus(ok ? 'online' : 'offline')
       if (!ok) setError({ type: 'server_unreachable', message: 'Сервер недоступен — убедитесь, что бэкенд запущен.' })
-      else if (error?.type === 'server_unreachable') setError(null)
+      else setError(prev => (prev?.type === 'server_unreachable' ? null : prev))
     }
     check()
     const id = setInterval(check, 30_000)
     return () => clearInterval(id)
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [])
 
   // Load models once
   useEffect(() => {
@@ -487,6 +487,19 @@ export default function App() {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
+
+  // Esc — остановить генерацию из любого места интерфейса
+  useEffect(() => {
+    if (!isStreaming) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        abortRef.current?.abort()
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [isStreaming])
 
   const handleSend = useCallback(async (opts?: { editId?: string; text?: string }) => {
     const text = (opts?.text ?? input).trim()

@@ -369,6 +369,7 @@ html, body {
   padding: 8px 10px; resize: vertical; min-height: 60px; max-height: 200px;
 }
 .edit-textarea:focus { outline: none; border-color: var(--violet-mid); }
+.edit-textarea:focus-visible { outline: 2px solid var(--ice); outline-offset: 2px; }
 
 .edit-actions { display: flex; gap: 8px; justify-content: flex-end; }
 .edit-actions .btn-send { padding: 5px 12px; font-size: 0.72rem; }
@@ -571,6 +572,7 @@ html, body {
   resize: none; min-height: 44px; max-height: 200px; overflow-y: auto;
 }
 .input-textarea::placeholder { color: var(--dust); font-style: italic; font-size: 0.84rem; }
+.input-textarea:focus-visible { outline: 2px solid var(--ice); outline-offset: 2px; }
 
 .input-footer {
   display: flex; align-items: center; justify-content: space-between;
