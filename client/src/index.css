@@ -57,7 +57,7 @@ html, body {
 
 /* ── Focus ───────────────────────────────────────────────────────────── */
 
-:focus-visible { outline: 2px solid var(--ice); outline-offset: 2px; }
+:focus-visible { outline: 2px solid var(--violet-bright); outline-offset: 2px; }
 
 /* ── Keyframes ───────────────────────────────────────────────────────── */
 
@@ -190,7 +190,10 @@ html, body {
   transition: border-color 0.2s, box-shadow 0.2s;
 }
 .model-select:hover { border-color: var(--violet-mid); box-shadow: 0 0 10px rgba(124,58,237,0.35); }
-.model-select option { background: #1a1729; color: var(--bone); }
+.model-select:focus { border-color: var(--violet-bright); }
+.model-select option { background: var(--tomb); color: var(--frost); }
+.model-select option:hover,
+.model-select option:checked { background: var(--violet-mid); color: var(--violet-pale); }
 
 /* ── New Chat ────────────────────────────────────────────────────────── */
 
@@ -369,7 +372,7 @@ html, body {
   padding: 8px 10px; resize: vertical; min-height: 60px; max-height: 200px;
 }
 .edit-textarea:focus { outline: none; border-color: var(--violet-mid); }
-.edit-textarea:focus-visible { outline: 2px solid var(--ice); outline-offset: 2px; }
+.edit-textarea:focus-visible { outline: 2px solid var(--violet-bright); outline-offset: 2px; }
 
 .edit-actions { display: flex; gap: 8px; justify-content: flex-end; }
 .edit-actions .btn-send { padding: 5px 12px; font-size: 0.72rem; }
@@ -572,7 +575,7 @@ html, body {
   resize: none; min-height: 44px; max-height: 200px; overflow-y: auto;
 }
 .input-textarea::placeholder { color: var(--dust); font-style: italic; font-size: 0.84rem; }
-.input-textarea:focus-visible { outline: 2px solid var(--ice); outline-offset: 2px; }
+.input-textarea:focus-visible { outline: 2px solid var(--violet-bright); outline-offset: 2px; }
 
 .input-footer {
   display: flex; align-items: center; justify-content: space-between;
