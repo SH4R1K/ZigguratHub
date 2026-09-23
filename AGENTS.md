@@ -18,6 +18,7 @@
 
 ## Development
 
+- Git-workflow: `gitworkflow.md` — ветки, этапы, формат коммитов. Обязателен для всех агентов при коммитах.
 - Бэк: `dotnet build` / `dotnet run --project server` / `dotnet watch`.
 - Фронт: `npm install --prefix web` / `npm run dev --prefix web` (Vite, порт 5173).
 - Конфиг: `server/appsettings.json` + env (`OPENROUTER_API_KEY`, `OPENROUTER_MODEL`, `OPENROUTER_BASE_URL`).
