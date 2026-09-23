@@ -1,4 +1,3 @@
-using System.Net;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
@@ -60,27 +59,38 @@ public sealed class OpenRouterClient
         string? responseModel = null;
         Usage? usage = null;
 
-        while (await reader.ReadLineAsync(ct) is { } line)
+        try
         {
-            if (!line.StartsWith("data:", StringComparison.Ordinal))
-                continue;
+            while (await reader.ReadLineAsync(ct) is { } line)
+            {
+                if (!line.StartsWith("data:", StringComparison.Ordinal))
+                    continue;
 
-            var data = line["data:".Length..].Trim();
-            if (data == "[DONE]")
-                break;
+                var data = line["data:".Length..].Trim();
+                if (data == "[DONE]")
+                    break;
 
-            var chunk = JsonSerializer.Deserialize<OpenRouterChunk>(data, OpenRouterJson);
-            if (chunk is null)
-                continue;
+                var chunk = JsonSerializer.Deserialize<OpenRouterChunk>(data, OpenRouterJson);
+                if (chunk is null)
+                    continue;
 
-            responseModel ??= chunk.Model;
+                if (chunk.Error is not null)
+                    throw CreateChunkError(chunk.Error);
 
-            var delta = chunk.Choices?.FirstOrDefault()?.Delta?.Content;
-            if (!string.IsNullOrEmpty(delta))
-                await Sse.WriteDeltaAsync(response, delta, ct);
+                responseModel ??= chunk.Model;
 
-            if (chunk.Usage is not null)
-                usage = MapUsage(chunk.Usage);
+                var delta = chunk.Choices?.FirstOrDefault()?.Delta?.Content;
+                if (!string.IsNullOrEmpty(delta))
+                    await Sse.WriteDeltaAsync(response, delta, ct);
+
+                if (chunk.Usage is not null)
+                    usage = MapUsage(chunk.Usage);
+            }
+        }
+        catch (IOException)
+        {
+            // сброс соединения с OpenRouter — это сетевая ошибка, а не internal
+            throw new OpenRouterException("network", "Соединение с OpenRouter оборвалось во время генерации.");
         }
 
         await Sse.WriteDoneAsync(response, responseModel ?? model, usage, ct);
@@ -92,7 +102,7 @@ public sealed class OpenRouterClient
         {
             return await _http.SendAsync(request, completionOption, ct);
         }
-        catch (HttpRequestException)
+        catch (Exception ex) when (ex is HttpRequestException or IOException)
         {
             throw new OpenRouterException("network", "Не удалось связаться с OpenRouter: проверьте сеть и настройки сервера.");
         }
@@ -100,12 +110,23 @@ public sealed class OpenRouterClient
 
     private HttpRequestMessage CreateRequest(string model, IReadOnlyList<ChatMessage> messages, bool stream)
     {
-        var body = JsonSerializer.Serialize(new
-        {
-            model,
-            messages = messages.Select(m => new { role = m.Role, content = m.Content }),
-            stream
-        }, OpenRouterJson);
+        // stream_options.include_usage: без него OpenRouter не присылает usage в финальном чанке.
+        object payload = stream
+            ? new
+            {
+                model,
+                messages = messages.Select(m => new { role = m.Role, content = m.Content }),
+                stream,
+                stream_options = new { include_usage = true }
+            }
+            : new
+            {
+                model,
+                messages = messages.Select(m => new { role = m.Role, content = m.Content }),
+                stream
+            };
+
+        var body = JsonSerializer.Serialize(payload, OpenRouterJson);
 
         var request = new HttpRequestMessage(HttpMethod.Post, "chat/completions")
         {
@@ -120,12 +141,7 @@ public sealed class OpenRouterClient
 
     private async Task<OpenRouterException> CreateUpstreamErrorAsync(HttpResponseMessage response, CancellationToken ct)
     {
-        var type = response.StatusCode switch
-        {
-            HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden => "auth",
-            HttpStatusCode.PaymentRequired or HttpStatusCode.TooManyRequests => "quota_limit",
-            _ => "upstream"
-        };
+        var type = MapErrorType((int)response.StatusCode);
 
         var message = type switch
         {
@@ -141,12 +157,31 @@ public sealed class OpenRouterClient
             if (!string.IsNullOrWhiteSpace(payload?.Error?.Message))
                 message = $"OpenRouter: {payload.Error.Message}";
         }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
         catch (Exception)
         {
             // тело ответа не JSON — оставляем общее сообщение
         }
 
         return new OpenRouterException(type, message);
+    }
+
+    private static string MapErrorType(int code) => code switch
+    {
+        401 or 403 => "auth",
+        402 or 429 => "quota_limit",
+        _ => "upstream"
+    };
+
+    private static OpenRouterException CreateChunkError(OpenRouterError error)
+    {
+        var message = string.IsNullOrWhiteSpace(error.Message)
+            ? "Сервис OpenRouter вернул ошибку во время генерации."
+            : $"OpenRouter: {error.Message}";
+        return new OpenRouterException(MapErrorType(error.Code ?? 0), message);
     }
 
     private static Usage? MapUsage(OpenRouterUsage? usage) =>
@@ -179,6 +214,7 @@ public sealed class OpenRouterClient
         public string? Model { get; set; }
         public List<OpenRouterChunkChoice>? Choices { get; set; }
         public OpenRouterUsage? Usage { get; set; }
+        public OpenRouterError? Error { get; set; }
     }
 
     private sealed class OpenRouterChunkChoice
@@ -206,6 +242,7 @@ public sealed class OpenRouterClient
     private sealed class OpenRouterError
     {
         public string? Message { get; set; }
+        public int? Code { get; set; }
     }
 }
 
