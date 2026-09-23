@@ -53,8 +53,10 @@
 | `messages`| array    | да           | История диалога: 1–50 сообщений. Роли: `user`, `assistant`.     |
 | `stream`  | boolean  | нет          | `true` (по умолчанию) — SSE-стриминг, `false` — обычный JSON.   |
 
-Ограничения: текст сообщения непустой и не длиннее 8000 символов
-(`OpenRouter:MaxContentLength`), максимум 50 сообщений (`OpenRouter:MaxMessages`).
+Ограничения: текст сообщения пользователя непустой и не длиннее 8000 символов
+(`OpenRouter:MaxContentLength`); ответы модели в истории допускаются до 50 000
+символов, чтобы длинная генерация не блокировала следующий запрос; максимум 50
+сообщений (`OpenRouter:MaxMessages`).
 
 ### stream=true (по умолчанию)
 
@@ -150,12 +152,17 @@ dotnet run --project server
 
 | Переменная             | Описание                                                        |
 |------------------------|-----------------------------------------------------------------|
-| `OPENROUTER_API_KEY`   | Ключ OpenRouter. Обязателен для `/api/chat`. Не хранится в конфиге и git. |
-| `OPENROUTER_MODEL`     | Модель по умолчанию (переопределяет `OpenRouter:DefaultModel`). |
-| `OPENROUTER_BASE_URL`  | Базовый URL OpenRouter (по умолчанию `https://openrouter.ai/api/v1`). |
+| `OPENROUTER_API_KEY`    | Ключ OpenRouter. Обязателен для `/api/chat`. Не хранится в конфиге и git. |
+| `OPENROUTER_MODEL`      | Модель по умолчанию (переопределяет `OpenRouter:DefaultModel`). |
+| `OPENROUTER_BASE_URL`   | Базовый URL OpenRouter (по умолчанию `https://openrouter.ai/api/v1`). |
+| `OPENROUTER_USE_PROXY`  | `true` включает исходящий прокси для запросов к OpenRouter (по умолчанию `false`). |
+| `OPENROUTER_PROXY_URL`  | Адрес прокси: `http://host:port`, `https://host:port`, `socks4(a)://host:port`,
+  `socks5://user:pass@host:port`. Обязателен при `OPENROUTER_USE_PROXY=true`,
+  иначе сервер падает при старте (fail fast). `socks5h` не поддерживается в .NET 10. |
 
 Секции `appsettings.json`:
 
 - `OpenRouter` — `BaseUrl`, `DefaultModel`, `AllowedModels`, `TimeoutSeconds`,
-  `MaxMessages`, `MaxContentLength`. `ApiKey` сюда не кладётся — только env.
+  `MaxMessages`, `MaxContentLength`, `UseProxy`, `ProxyUrl`. `ApiKey` сюда не кладётся —
+  только env.
 - `Cors:AllowedOrigins` — список разрешённых origin'ов.
