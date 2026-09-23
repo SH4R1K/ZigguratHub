@@ -6,6 +6,8 @@ services:
       OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
       OPENROUTER_MODEL: ${OPENROUTER_MODEL:-}
       OPENROUTER_BASE_URL: ${OPENROUTER_BASE_URL:-}
+      OPENROUTER_USE_PROXY: ${OPENROUTER_USE_PROXY:-}
+      OPENROUTER_PROXY_URL: ${OPENROUTER_PROXY_URL:-}
       # Фронт в Docker раздаётся на http://localhost:8080
       Cors__AllowedOrigins__0: http://localhost:8080
     ports:

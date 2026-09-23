@@ -1,6 +1,7 @@
 using ChatServer;
 using Microsoft.Extensions.Configuration.Memory;
 using Microsoft.Extensions.Options;
+using System.Net;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -12,6 +13,8 @@ foreach (var (envVar, option) in new (string, string)[]
     ("OPENROUTER_API_KEY", "ApiKey"),
     ("OPENROUTER_MODEL", "DefaultModel"),
     ("OPENROUTER_BASE_URL", "BaseUrl"),
+    ("OPENROUTER_USE_PROXY", "UseProxy"),
+    ("OPENROUTER_PROXY_URL", "ProxyUrl"),
 })
 {
     var value = Environment.GetEnvironmentVariable(envVar);
@@ -39,9 +42,57 @@ builder.Services.AddHttpClient<OpenRouterClient>((sp, http) =>
     http.BaseAddress = new Uri(options.BaseUrl.TrimEnd('/') + "/");
     // Таймаут управляется linked CTS в эндпоинте /api/chat.
     http.Timeout = Timeout.InfiniteTimeSpan;
+})
+.ConfigurePrimaryHttpMessageHandler(sp =>
+{
+    var options = sp.GetRequiredService<IOptions<OpenRouterOptions>>().Value;
+    var handler = new SocketsHttpHandler();
+
+    // Прокси включается только явно (UseProxy=true). По умолчанию — как раньше, без прокси.
+    ValidateProxyOptions(options);
+
+    if (options.UseProxy)
+        handler.Proxy = CreateProxy(options.ProxyUrl!);
+
+    return handler;
 });
 
+// Валидация конфигурации прокси: вызывается при старте (fail fast) и при создании клиента.
+static void ValidateProxyOptions(OpenRouterOptions options)
+{
+    if (!options.UseProxy)
+        return;
+
+    if (string.IsNullOrWhiteSpace(options.ProxyUrl))
+        throw new InvalidOperationException("OpenRouter: UseProxy=true, но OPENROUTER_PROXY_URL не задан.");
+
+    var uri = new Uri(options.ProxyUrl, UriKind.Absolute);
+    var supportedSchemes = new[] { "http", "https", "socks4", "socks4a", "socks5" };
+    if (!supportedSchemes.Contains(uri.Scheme, StringComparer.OrdinalIgnoreCase))
+        throw new InvalidOperationException(
+            $"OpenRouter: неподдерживаемая схема прокси \"{uri.Scheme}\". " +
+            "Поддерживаются: http, https, socks4, socks4a, socks5. " +
+            "socks5h не поддерживается в .NET 10, используйте socks5.");
+}
+
+// Адрес собираем без userinfo: uri.Authority содержит userinfo, его использовать нельзя.
+static WebProxy CreateProxy(string proxyUrl)
+{
+    var uri = new Uri(proxyUrl, UriKind.Absolute);
+    var address = new UriBuilder(uri.Scheme, uri.Host, uri.Port).Uri;
+    var proxy = new WebProxy(address);
+    if (!string.IsNullOrEmpty(uri.UserInfo))
+    {
+        var parts = uri.UserInfo.Split(':', 2);
+        proxy.Credentials = new NetworkCredential(parts[0], parts.Length > 1 ? parts[1] : string.Empty);
+    }
+    return proxy;
+}
+
 var app = builder.Build();
+
+// Fail fast: ошибка конфигурации прокси валит сервер при старте, а не при первом запросе.
+ValidateProxyOptions(app.Services.GetRequiredService<IOptions<OpenRouterOptions>>().Value);
 
 app.UseCors();
 
