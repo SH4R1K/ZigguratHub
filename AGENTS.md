@@ -6,27 +6,28 @@
 ## Project overview
 
 Одностраничный веб-чат с языковой моделью (OpenRouter, `:free` модели).
-Монолит-монorepo: `server/` (ASP.NET Core minimal API — прокси к OpenRouter, держит ключ на сервере) + `web/` (React + TypeScript + Vite).
+Монолит-монorepo: `server/` (ASP.NET Core minimal API — прокси к OpenRouter, держит ключ на сервере) + `client/` (React + TypeScript + Vite).
 
 ## Architecture
 
 - `server/` — ASP.NET Core 10 (minimal API), один проект без лишних слоёв: `POST /api/chat` проксирует стриминговый SSE OpenRouter, нормализуя события (`delta`/`done`/`error`) для фронта.
-- `web/` — React + Vite, стриминг через `fetch` + `ReadableStream`, `AbortController` для «Стоп».
+- `client/` — React + Vite, стриминг через `fetch` + `ReadableStream`, `AbortController` для «Стоп».
+- Клиент раздают nginx (`client/Dockerfile` + `client/nginx.conf`: SPA + прокси `/api`, `proxy_buffering off` для SSE); сервер слушает `:5080` (5080→8080 в docker-compose, Vite-прокси `/api` → `localhost:5080`).
 - Ключ OpenRouter живёт только в `OPENROUTER_API_KEY` (env/user-secrets), никогда не попадает в браузер.
-- История диалога — `localStorage` на клиенте, сервер stateless (обоснование в README).
-- Паттерны: минимальные, без DDD/CQRS/Repository; бизнес-логика — сервисы в `server/`, состояние чата — хук `useChat` в `web/`.
+- История диалога — `localStorage` на клиенте (переживает перезагрузку, лимит 100 сообщений), сервер stateless.
+- Паттерны: минимальные, без DDD/CQRS/Repository; бизнес-логика — сервисы в `server/`, состояние чата — компонент `App` в `client/src/App.tsx`.
 
 ## Development
 
 - Git-workflow: `gitworkflow.md` — ветки, этапы, формат коммитов. Обязателен для всех агентов при коммитах.
 - Бэк: `dotnet build` / `dotnet run --project server` / `dotnet watch`.
-- Фронт: `npm install --prefix web` / `npm run dev --prefix web` (Vite, порт 5173).
+- Фронт: `npm install --prefix client` / `npm run dev --prefix client` (Vite, порт 5173).
 - Конфиг: `server/appsettings.json` + env (`OPENROUTER_API_KEY`, `OPENROUTER_MODEL`, `OPENROUTER_BASE_URL`).
 
 ## Testing
 
 - `dotnet test` — тестовый проект в `server/` (xUnit), если добавлен.
-- Фронт: `npm run lint` + `npm run typecheck` (TS), юнит-тесты — при наличии.
+- Фронт: `npx tsc --noEmit` (typecheck) + `npm run build` (Vite), юнит-тесты — при наличии.
 - Интеграции с OpenRouter руками: проверка стриминга, «Стоп», ошибки 429/таймаут.
 
 ## Conventions
