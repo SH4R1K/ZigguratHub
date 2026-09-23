@@ -4,16 +4,23 @@ using Microsoft.Extensions.Options;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Ключ OpenRouter берём из env OPENROUTER_API_KEY (приоритет над конфигом),
-// чтобы он не попадал в appsettings.json и в git.
-var apiKey = Environment.GetEnvironmentVariable("OPENROUTER_API_KEY");
-if (!string.IsNullOrWhiteSpace(apiKey))
+// Env-переменные OPENROUTER_* имеют приоритет над appsettings.
+// Ключ читаем только из env, чтобы он не попадал в appsettings.json и git.
+var envOverrides = new Dictionary<string, string?>();
+foreach (var (envVar, option) in new (string, string)[]
 {
-    builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
-    {
-        [OpenRouterOptions.SectionName + ":ApiKey"] = apiKey
-    });
+    ("OPENROUTER_API_KEY", "ApiKey"),
+    ("OPENROUTER_MODEL", "DefaultModel"),
+    ("OPENROUTER_BASE_URL", "BaseUrl"),
+})
+{
+    var value = Environment.GetEnvironmentVariable(envVar);
+    if (!string.IsNullOrWhiteSpace(value))
+        envOverrides[$"{OpenRouterOptions.SectionName}:{option}"] = value;
 }
+
+if (envOverrides.Count > 0)
+    builder.Configuration.AddInMemoryCollection(envOverrides);
 
 builder.Services.Configure<OpenRouterOptions>(builder.Configuration.GetSection(OpenRouterOptions.SectionName));
 
