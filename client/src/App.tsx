@@ -5,6 +5,8 @@ import type { Components } from 'react-markdown'
 
 const BASE = import.meta.env.VITE_API_BASE ?? ''
 const MAX_CHARS = 4000
+const STORAGE_KEY = 'ziggurathub:chat:v1'
+const MAX_STORED = 100
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -25,6 +27,27 @@ interface Message {
 // ── Utilities ──────────────────────────────────────────────────────────────
 
 const uid = () => Math.random().toString(36).slice(2, 9)
+
+function loadMessages(): Message[] {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY)
+    if (!raw) return []
+    const parsed = JSON.parse(raw)
+    if (!Array.isArray(parsed)) return []
+    return parsed
+      .filter((m: Message) => typeof m?.role === 'string' && typeof m?.content === 'string'
+        && (m.role !== 'assistant' || m.content.trim() !== ''))
+      .map((m: Message) => ({ ...m, isStreaming: false }))
+  } catch {
+    return []
+  }
+}
+
+function saveMessages(messages: Message[]): void {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(messages.slice(-MAX_STORED)))
+  } catch { /* переполнение localStorage или приватный режим — не критично */ }
+}
 
 function pluralTokens(n: number): string {
   const mod10 = n % 10, mod100 = n % 100
@@ -450,7 +473,7 @@ function ErrorBanner({ type, message, onDismiss }: { type: string; message: stri
 // ── App ────────────────────────────────────────────────────────────────────
 
 export default function App() {
-  const [messages, setMessages]         = useState<Message[]>([])
+  const [messages, setMessages]         = useState<Message[]>(loadMessages)
   const [input, setInput]               = useState('')
   const [isStreaming, setIsStreaming]   = useState(false)
   const [serverStatus, setServerStatus] = useState<ServerStatus>('checking')
@@ -482,6 +505,9 @@ export default function App() {
       if (ms.length) { setModels(ms); setSelectedModel(ms[0]) }
     })
   }, [])
+
+  // Persist history — reload keeps the conversation
+  useEffect(() => { saveMessages(messages) }, [messages])
 
   // Auto-scroll to bottom
   useEffect(() => {
