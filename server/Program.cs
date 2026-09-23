@@ -36,7 +36,7 @@ builder.Services.AddCors(options =>
 builder.Services.AddHttpClient<OpenRouterClient>((sp, http) =>
 {
     var options = sp.GetRequiredService<IOptions<OpenRouterOptions>>().Value;
-    http.BaseAddress = new Uri(options.BaseUrl);
+    http.BaseAddress = new Uri(options.BaseUrl.TrimEnd('/') + "/");
     // Таймаут управляется linked CTS в эндпоинте /api/chat.
     http.Timeout = Timeout.InfiniteTimeSpan;
 });
