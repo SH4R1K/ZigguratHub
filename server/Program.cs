@@ -76,11 +76,15 @@ app.MapPost("/api/chat", async (ChatRequest? request, OpenRouterClient client, I
 
     var model = request.Model ?? opts.DefaultModel;
 
+    // Таймаут и отмена клиента действуют на оба режима (stream и non-stream).
+    using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+    cts.CancelAfter(TimeSpan.FromSeconds(opts.TimeoutSeconds));
+
     if (!request.Stream)
     {
         try
         {
-            var chatResponse = await client.CompleteAsync(model, request.Messages, ct);
+            var chatResponse = await client.CompleteAsync(model, request.Messages, cts.Token);
             return Results.Ok(chatResponse);
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
@@ -105,9 +109,6 @@ app.MapPost("/api/chat", async (ChatRequest? request, OpenRouterClient client, I
     // SSE-стриминг: статус уже 200, ошибки после начала стрима пишем событиями error.
     context.Response.ContentType = "text/event-stream";
     context.Response.Headers.CacheControl = "no-cache";
-
-    using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
-    cts.CancelAfter(TimeSpan.FromSeconds(opts.TimeoutSeconds));
 
     try
     {
