@@ -8,6 +8,8 @@ public sealed class OpenRouterOptions
     public string BaseUrl { get; set; } = "https://openrouter.ai/api/v1";
     public string? ApiKey { get; set; }
     public string DefaultModel { get; set; } = "qwen/qwen3.8-27b:free";
+    public bool UseProxy { get; set; }
+    public string? ProxyUrl { get; set; }
     public string[] AllowedModels { get; set; } = [];
     public int TimeoutSeconds { get; set; } = 120;
     public int MaxMessages { get; set; } = 50;
