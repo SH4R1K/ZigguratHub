@@ -79,6 +79,8 @@ data: {"model":"qwen/qwen3.8-27b:free","usage":{"promptTokens":12,"completionTok
 | `error` | `{ "type": "...", "message": "..." }`                       | Ошибка после начала стрима.    |
 
 `usage` может отсутствовать (`null`), если модель не вернула статистику токенов.
+Сервер явно запрашивает usage у OpenRouter (`stream_options.include_usage`),
+поэтому в `done` он приходит для моделей, поддерживающих этот флаг.
 
 ### stream=false
 
