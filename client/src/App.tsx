@@ -3,7 +3,7 @@ import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import type { Components } from 'react-markdown'
 
-const BASE = 'http://localhost:5080'
+const BASE = import.meta.env.VITE_API_BASE ?? ''
 const MAX_CHARS = 4000
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -468,7 +468,7 @@ export default function App() {
     const check = async () => {
       const ok = await apiHealth()
       setServerStatus(ok ? 'online' : 'offline')
-      if (!ok) setError({ type: 'server_unreachable', message: 'Сервер недоступен — убедитесь, что бэкенд запущен на localhost:5080.' })
+      if (!ok) setError({ type: 'server_unreachable', message: 'Сервер недоступен — убедитесь, что бэкенд запущен.' })
       else if (error?.type === 'server_unreachable') setError(null)
     }
     check()
