@@ -3,6 +3,9 @@ namespace ChatServer;
 /// <summary>Тело запроса POST /api/chat.</summary>
 public sealed class ChatRequest
 {
+    /// <summary>Верхняя граница для ответов модели в истории: их генерирует нейронка и они бывают длиннее лимита ввода пользователя.</summary>
+    private const int MaxAssistantContentLength = 50_000;
+
     public string? Model { get; set; }
     public List<ChatMessage> Messages { get; set; } = [];
     public bool Stream { get; set; } = true;
@@ -24,8 +27,9 @@ public sealed class ChatRequest
             if (string.IsNullOrWhiteSpace(message.Content))
                 return new ApiError("validation", "Текст сообщения не может быть пустым.");
 
-            if (message.Content.Length > options.MaxContentLength)
-                return new ApiError("validation", $"Сообщение слишком длинное: максимум {options.MaxContentLength} символов.");
+            var maxContentLength = message.Role == "user" ? options.MaxContentLength : MaxAssistantContentLength;
+            if (message.Content.Length > maxContentLength)
+                return new ApiError("validation", $"Сообщение слишком длинное: максимум {maxContentLength} символов.");
         }
 
         if (Model is not null && !options.AllowedModels.Contains(Model))
